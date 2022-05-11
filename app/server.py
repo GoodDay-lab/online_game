@@ -1,0 +1,171 @@
+
+from concurrent.futures import thread
+import logging
+import asyncio
+import threading
+from . import packet
+from . import manager as mng
+import socket
+import time
+import json
+import uuid
+
+
+class Server:
+    def __init__(self, logger=None, manager=None, config=None):
+        if not config:
+            config = {}
+        
+        if not manager:
+            self.manager = mng.EngineManager()
+            
+        self.logger = logger
+        if not logger:
+            self.logger = logging.getLogger()
+        
+        self.max_players = (config.get('max_players') if 'max_players' in config else 100)
+        self.blocking = (config.get('blocking') if 'blocking' in config else 0)
+        self.buffer_size = (config.get('buffer_size') if 'buffer_size' in config else 2 ** 12)
+        
+        self.sockets = {}
+        self.udp_addrs = {}
+        
+        self.udp_handlers = {}
+        self.tcp_handlers = {}
+    
+    def add_udp_handler(self, namespace, **kwargs):
+        """
+        param: namespace - describes the name of message comming from user
+        """
+        def f(func):
+            self.logger.info(f"Added new handler on '{namespace}'")
+            self.udp_handlers[namespace] = func
+            def wrapped(*args, **kwargs):
+                return func(*args, **kwargs)
+            return wrapped
+        return f
+
+    def add_tcp_handler(self, namespace, **kwargs):
+        """
+        param: namespace - describes the name of message comming from user
+        """
+        def f(func):
+            self.logger.info(f"Added new handler on '{namespace}'")
+            self.tcp_handlers[namespace] = func
+            def wrapped(*args, **kwargs):
+                return func(*args, **kwargs)
+            return wrapped
+        return f
+    
+    def run_polling(self, loop=None, host='192.168.0.104', port=8080):
+        self.logger.info("Started!")
+        if not loop:
+            loop = asyncio.get_event_loop()
+        
+        print(f"Listening UDP on {port} and TCP on {port + 1}")
+        self.logger.info(f"Listening UDP on {port} and TCP on {port + 1}")
+        
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(asyncio.gather(self._run_udp_server(host, port)))
+    
+    async def _run_udp_server(self, host, port):
+        """
+        Using to transfer fast-deliver data
+        """
+        logging.info("UDP server started!")
+        is_running = True
+        
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        sock.setblocking(1)
+        sock.bind((host, port))
+        
+        while is_running:
+            raw, addr = sock.recvfrom(self.buffer_size)
+            
+            logging.info(f"Someone connected to UDP {addr[0]}:{addr[1]}")
+            
+            try:
+                request = json.loads(raw)
+            except json.decoder.JSONDecodeError:
+                self.udp_handlers['_json_decode_error'](addr, raw)
+            
+            if request['type'] in self.udp_handlers:
+                handler = self.udp_handlers[request['type']]
+                await handler(addr, request)
+            else:
+                handler = self.udp_handlers['_type_error']
+                await handler(addr, request)
+    
+    async def _run_tcp_server(self, host, port):
+        """
+        Using to transfer commands and must-deliver messages
+        """
+        logging.info("TCP server started!")
+        is_running = True
+        
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        sock.setblocking(1)
+        sock.bind((host, port))
+        sock.listen(self.max_players)
+        
+        while is_running:
+            try:
+                _socket, addr = sock.accept()
+            except:
+                continue
+            
+            logging.info(f"Someone connected TCP on {addr[0]}:{addr[1]}")
+            sid = self._create_sid()
+            self.sockets[sid] = _socket
+            
+            request = _socket.recv(self.buffer_size)
+            
+            try:
+                request_json = json.loads(request)
+            except json.decoder.JSONDecodeError:
+                await self.tcp_handlers['_json_decode_error'](sid, request)
+            
+            if request_json['type'] in self.tcp_handlers:
+                handler = self.tcp_handlers[request_json['type']]
+                await handler(sid, request_json)
+            else:
+                handler = self.tcp_handlers['_type_error']
+                await handler(sid, request_json)
+                
+    
+    def _create_sid(self):
+        return str(uuid.uuid4())
+    
+    def _get_socket(self, sid):
+        if sid not in self.sockets:
+            raise ValueError(f"Wrong sid: There's not element with sid {sid}")
+        
+        return self.sockets[sid]
+    
+    def _get_udp_socket(self):
+        return socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    
+    async def send(self, sid, data):
+        try:
+            _socket = self._get_socket(sid)
+        except:
+            self.logger.warning("Cannot send to sid %s", sid)
+            return
+        _socket.send(packet.Packet(packet.MESSAGE, data).data)
+    
+    async def send_udp(self, data, addr):
+        """
+        Тут должен создаваться "ответный" сокет, который будет лишь отвечать
+        """
+        try:
+            sock = self._get_udp_socket()
+            sock.sendto(json.dumps(data).encode(), addr)
+        except:
+            print(len(json.dumps(data).encode()))
+    
+    def set_an_background_task(self, event, *args, **kwargs):
+        asyncio.ensure_future(event(*args, **kwargs))
+
+        
