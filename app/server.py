@@ -167,5 +167,3 @@ class Server:
     
     def set_an_background_task(self, event, *args, **kwargs):
         asyncio.ensure_future(event(*args, **kwargs))
-
-        

@@ -1,16 +1,11 @@
 import asyncio
+import json
 import socket
 
 
-async def yandex(host='127.0.0.1', port=8088):
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind((host, port))
-    
-    while True:
-        b = sock.recvfrom(1024)
-        print(b)
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 
-l = asyncio.get_event_loop()
-t = asyncio.gather(yandex(), yandex(port=8089))
-l.run_until_complete(t)
+sock.sendto(json.dumps({1: 1}).encode(), ('127.0.0.1', 9999))
+sock.sendto(json.dumps({1: 2}).encode(), ('127.0.0.1', 10000))
+

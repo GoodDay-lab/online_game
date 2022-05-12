@@ -4,6 +4,7 @@ from threading import Thread
 import time
 import pygame
 import json
+from app.client import Cache, Client
 
 
 pygame.init()
@@ -64,7 +65,7 @@ struct_balls = {
 
 if __name__ == '__main__':
     screen = pygame.display.set_mode((800, 600))
-    cache = Cache(fps=80)
+    cache = Cache(fps=1000)
     cache.thread_live = True
     cache.thread = Thread(target=update_data, args=(cache,))
     cache.thread.start()
