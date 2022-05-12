@@ -43,15 +43,14 @@ class Client():
     
     def call_tcp(self, method="ping", data=None,
                  response=False, callback=None):
-        if type(data) not in (bytes, bytearray):
-            if type(data) == dict:
-                data = json.dumps(data).encode()
-            else:
-                raise EncoderException("Wrong data type!")
+        if type(data) != dict:
+            raise EncoderException("Wrong data type!")
         request = {'type': method, 'data': data}
+        request = json.dumps(request).encode()
         self.send_tcp(request)
         if response:
             response = self.tcp_socket.recv(self.buffer_size)
+            self.cache.add_data(json.loads(response))
             if callback:
                 return callback(response)
             return response
@@ -65,13 +64,14 @@ class Client():
         self.send_udp(request, address)
         if response:
             response, addr = self.udp_socket.recvfrom(self.buffer_size)
+            self.cache.add_data(json.loads(response))
             if callback:
                 return callback(response)
             return response
     
-    def create_session(self, remote):
+    def create_session(self, address):
         self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.tcp_socket.connect(remote)
+        self.tcp_socket.connect(address)
         return self.tcp_socket
     
     def send_tcp(self, data):

@@ -1,10 +1,7 @@
 
-from concurrent.futures import thread
-import logging
 import asyncio
+import logging
 import threading
-from . import packet
-from . import manager as mng
 import socket
 import time
 import json
@@ -15,13 +12,11 @@ class Server:
     def __init__(self, logger=None, manager=None, config=None):
         if not config:
             config = {}
-        
-        if not manager:
-            self.manager = mng.EngineManager()
             
         self.logger = logger
         if not logger:
             self.logger = logging.getLogger()
+        self.logger.log(logging.INFO, "MESSAGE")
         
         self.max_players = (config.get('max_players') if 'max_players' in config else 100)
         self.blocking = (config.get('blocking') if 'blocking' in config else 0)
@@ -65,14 +60,21 @@ class Server:
         print(f"Listening UDP on {port} and TCP on {port + 1}")
         self.logger.info(f"Listening UDP on {port} and TCP on {port + 1}")
         
-        loop = asyncio.get_event_loop()
-        loop.run_until_complete(asyncio.gather(self._run_udp_server(host, port)))
+        loop = asyncio.new_event_loop()
+        thread = threading.Thread(target=self._run_thread, args=(loop,))
+        thread.start()
+        asyncio.run_coroutine_threadsafe(self._run_udp_server(host, port), loop)
+        loop = asyncio.new_event_loop()
+        thread = threading.Thread(target=self._run_thread, args=(loop,))
+        thread.start()
+        asyncio.run_coroutine_threadsafe(self._run_tcp_server(host, port + 1), loop)
     
     async def _run_udp_server(self, host, port):
         """
         Using to transfer fast-deliver data
         """
-        logging.info("UDP server started!")
+        self.logger.debug("UDP server started!")
+        print("[INFO] UDP SERVER STARTED!")
         is_running = True
         
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -83,7 +85,7 @@ class Server:
         while is_running:
             raw, addr = sock.recvfrom(self.buffer_size)
             
-            logging.info(f"Someone connected to UDP {addr[0]}:{addr[1]}")
+            self.logger.info(f"Someone connected to UDP {addr[0]}:{addr[1]}")
             
             try:
                 request = json.loads(raw)
@@ -101,7 +103,8 @@ class Server:
         """
         Using to transfer commands and must-deliver messages
         """
-        logging.info("TCP server started!")
+        self.logger.debug("TCP server started!")
+        print("[INFO] TCP SERVER STARTED!")
         is_running = True
         
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -109,6 +112,7 @@ class Server:
         sock.setblocking(1)
         sock.bind((host, port))
         sock.listen(self.max_players)
+        print("[INFO] TCP SERVER CONFIGURED...")
         
         while is_running:
             try:
@@ -116,11 +120,13 @@ class Server:
             except:
                 continue
             
-            logging.info(f"Someone connected TCP on {addr[0]}:{addr[1]}")
+            self.logger.info(f"Someone connected TCP on {addr[0]}:{addr[1]}")
             sid = self._create_sid()
             self.sockets[sid] = _socket
             
+            print("[INFO] Created new socket with (%s)" % sid)
             request = _socket.recv(self.buffer_size)
+            print("[INFO] Got request", request)
             
             try:
                 request_json = json.loads(request)
@@ -133,6 +139,11 @@ class Server:
             else:
                 handler = self.tcp_handlers['_type_error']
                 await handler(sid, request_json)
+    
+    
+    def _run_thread(self, loop):
+        asyncio.set_event_loop(loop)
+        loop.run_forever()
                 
     
     def _create_sid(self):
@@ -148,16 +159,19 @@ class Server:
         return socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     
     async def send(self, sid, data):
+        """
+        This a method you should to use to send data to user TCP
+        """
         try:
             _socket = self._get_socket(sid)
         except:
             self.logger.warning("Cannot send to sid %s", sid)
             return
-        _socket.send(packet.Packet(packet.MESSAGE, data).data)
+        _socket.send(json.dumps(data).encode())
     
     async def send_udp(self, data, addr):
         """
-        Тут должен создаваться "ответный" сокет, который будет лишь отвечать
+        This a method you should to use to send data to user UDP
         """
         try:
             sock = self._get_udp_socket()

@@ -1,11 +1,35 @@
 import asyncio
+from concurrent.futures import thread
 import json
-import socket
+import threading
 
 
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+async def print_hello():
+    while True:
+        print("hello")
+        asyncio.sleep(5)
 
 
-sock.sendto(json.dumps({1: 1}).encode(), ('127.0.0.1', 9999))
-sock.sendto(json.dumps({1: 2}).encode(), ('127.0.0.1', 10000))
+async def print_bye():
+    while True:
+        print("bye")
+        asyncio.sleep(5)
+
+
+def run_loop(loop, tasks):
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(tasks)
+    
+    
+loop = asyncio.new_event_loop()
+task = print_hello()
+t = threading.Thread(target=run_loop, args=(loop, task))
+t.start()
+
+loop = asyncio.new_event_loop()
+task = print_bye()
+t = threading.Thread(target=run_loop, args=(loop, task))
+t.start()
+
+
 
