@@ -64,6 +64,11 @@ if __name__ == '__main__':
     
     is_playing = True
     while is_playing:
+        keys = pygame.key.get_pressed()
+        cache.actual_data['w'] = keys[pygame.K_w] * 6
+        cache.actual_data['s'] = keys[pygame.K_s] * 6
+        cache.actual_data['a'] = keys[pygame.K_a] * 6
+        cache.actual_data['d'] = keys[pygame.K_d] * 6
         for key in cache.actual_data:
             if cache.actual_data[key] == 0:
                 continue
@@ -83,7 +88,10 @@ if __name__ == '__main__':
                     cache.actual_data[e.unicode] = 5
         
         screen.fill('black')
-        data = cache.get_last_data()['data']
+        data = cache.get_last_data()
+        if 'data' not in data:
+            continue
+        data = data['data']
         for person in data:
             pygame.draw.circle(screen, color=person["color"],
                                center=person['pos'],

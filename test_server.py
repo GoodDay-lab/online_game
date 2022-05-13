@@ -93,7 +93,6 @@ async def getting_data(addr, request):
 async def sending_data(addr, request):
     uid = request['cookie'].get("uid")
     if not uid: return
-    data = request['data']
     storage.update_unit("users", control_data={"id": uid}, relevant_data=request['data'])
 
 
@@ -115,8 +114,8 @@ async def sending(addr, request):
         users_info = storage.get_units_by("users", id=simulation['users'])
         for user in users_info:
             if user['keys']:
-                user['pos'][1] += 10 * (user['keys']['s'] - user['keys']['w'])
-                user['pos'][0] += 10 * (user['keys']['d'] - user['keys']['a'])
+                user['pos'][1] += 1.4 * (user['keys']['s'] - user['keys']['w'])
+                user['pos'][0] += 1.4 * (user['keys']['d'] - user['keys']['a'])
                 for key in user['keys']:
                     user['keys'][key] = max(user['keys'][key] - 1, 0)
     
