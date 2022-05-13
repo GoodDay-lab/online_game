@@ -14,6 +14,7 @@ class Cache():
         self.cache = []
         self.offset = offset
         self.actual_data = None
+        self.cookie = {}
     
     def get_last_data(self):
         if self.cache:
@@ -28,6 +29,9 @@ class Cache():
     def add_data(self, data):
         self.cache.insert(0, data)
         self.cache = self.cache[:self.offset]
+    
+    def set_cookie(self, key, data):
+        self.cookie[key] = data
 
 
 class Client():
@@ -56,15 +60,24 @@ class Client():
             return response
     
     def call_udp(self, method="ping", data=None,
-                 address=None, response=False, callback=None):
+                 address=None, response=False, callback=None,
+                 caching=False, cookie=False):
+        if data is None:
+            data = {}
         if type(data) != dict:
             raise EncoderException("Wrong data type!")
-        request = {'type': method, 'data': data}
+        request = {'type': method, 'data': data, 'cookie': self.cache.cookie}
         request = json.dumps(request).encode()
         self.send_udp(request, address)
         if response:
             response, addr = self.udp_socket.recvfrom(self.buffer_size)
-            self.cache.add_data(json.loads(response))
+            response = json.loads(response)
+            if caching:
+                self.cache.add_data(response)
+            if cookie:
+                for key in cookie:
+                    if key in response:
+                        self.cache.set_cookie(key, response[key])
             if callback:
                 return callback(response)
             return response
@@ -121,4 +134,22 @@ class Client():
         if type(thread) != Thread:
             raise ValueError("Thread doesn't run")
         self.udp_hooks[name] = thread
+    
+    def run_main_loop(self, fps, event, control_key, *args):
+        """
+        I propose it should be neccessary
+        when you started a main loop where you are regulary getting/sending info from/to server
+        """
+        interval = 1 / fps
+        if type(control_key) == str:
+            setattr(self, control_key, True)
+        else:
+            raise ValueError("Bad control key")
+        
+        def loop(self, interval, control_key, *args):
+            while getattr(self, control_key):
+                event(self, *args)
+                time.sleep(interval)
+            
+        return Thread(target=loop, args=(self, interval, control_key, *args)).start()
     

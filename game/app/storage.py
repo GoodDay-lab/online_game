@@ -1,12 +1,4 @@
-
-from matplotlib.pyplot import table
-
-
-class User:
-    data = {
-        'uid': None,
-        'session_id': None,
-    }
+import enum
 
 
 class Storage:
@@ -33,6 +25,7 @@ class Storage:
             if (key not in unit) or (type(unit[key]) != temp[key]):
                 raise ValueError("Bad type or missing key")
         table['units'].append(unit)
+        return table['units'][-1]
     
     def get_unit(self, tablename, **data):
         if tablename not in self.tables:
@@ -58,7 +51,7 @@ class Storage:
     def get_units(self, tablename):
         if tablename not in self.tables:
             raise ValueError("There's not table name %s" % tablename)
-
+        
         return self.tables[tablename]['units']
     
     def update_unit(self, tablename, control_data, relevant_data):
@@ -71,4 +64,14 @@ class Storage:
                 for key in relevant_data:
                     if type(relevant_data[key]) == self.tables[tablename]['template'][key]:
                         self.tables[tablename]['units'][i][key] = relevant_data[key]
+    
+    def get_units_by(self, tablename, **data):
+        if tablename not in self.tables:
+            raise ValueError("There's not table name %s" % tablename)
+        
+        buffer = []
+        for i, unit in enumerate(self.tables[tablename]['units']):
+            if all(unit[key] in data[key] for key in data):
+                buffer.append(unit)
+        return buffer
             

@@ -16,7 +16,8 @@ class Server:
         self.logger = logger
         if not logger:
             self.logger = logging.getLogger()
-        self.logger.log(logging.INFO, "MESSAGE")
+        self.logger.setLevel(logging.INFO)
+        self.logger.addHandler(logging.StreamHandler())
         
         self.max_players = (config.get('max_players') if 'max_players' in config else 100)
         self.blocking = (config.get('blocking') if 'blocking' in config else 0)
@@ -57,9 +58,6 @@ class Server:
         if not loop:
             loop = asyncio.get_event_loop()
         
-        print(f"Listening UDP on {port} and TCP on {port + 1}")
-        self.logger.info(f"Listening UDP on {port} and TCP on {port + 1}")
-        
         loop = asyncio.new_event_loop()
         thread = threading.Thread(target=self._run_thread, args=(loop,))
         thread.start()
@@ -73,14 +71,15 @@ class Server:
         """
         Using to transfer fast-deliver data
         """
-        self.logger.debug("UDP server started!")
-        print("[INFO] UDP SERVER STARTED!")
+        self.logger.info("UDP server started on %s:%d" % (host, port))
+        
         is_running = True
         
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
         sock.setblocking(1)
         sock.bind((host, port))
+        print("[!] Start UDP")
         
         while is_running:
             raw, addr = sock.recvfrom(self.buffer_size)
@@ -103,8 +102,7 @@ class Server:
         """
         Using to transfer commands and must-deliver messages
         """
-        self.logger.debug("TCP server started!")
-        print("[INFO] TCP SERVER STARTED!")
+        self.logger.info("TCP server started on %s:%d" % (host, port))
         is_running = True
         
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -112,7 +110,8 @@ class Server:
         sock.setblocking(1)
         sock.bind((host, port))
         sock.listen(self.max_players)
-        print("[INFO] TCP SERVER CONFIGURED...")
+        self.logger.info("TCP Server configured")
+        print("[!] Start TCP")
         
         while is_running:
             try:
@@ -124,9 +123,9 @@ class Server:
             sid = self._create_sid()
             self.sockets[sid] = _socket
             
-            print("[INFO] Created new socket with (%s)" % sid)
+            self.logger.info("Created new socket with (%s)" % sid)
             request = _socket.recv(self.buffer_size)
-            print("[INFO] Got request", request)
+            self.logger.info("Got request length (%d)" % len(request))
             
             try:
                 request_json = json.loads(request)
