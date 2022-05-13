@@ -3,10 +3,16 @@ import json
 import socket
 from threading import Thread
 import time
-from neo4j import TransactionError
 import logging
-from ubjson import EncoderException
 import asyncio
+
+
+class EncoderException(Exception):
+    pass
+
+
+class TransactionError(Exception):
+    pass
 
 
 class Cache():

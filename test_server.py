@@ -129,5 +129,5 @@ async def sending(addr, request):
     await server.send_udp(response, addr)
 
 
-server.run_polling(host="127.0.0.1", port=9000)
+server.run_polling(host="0.0.0.0", port=9000)
 
