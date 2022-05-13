@@ -93,8 +93,8 @@ async def getting_data(addr, request):
 async def sending_data(addr, request):
     uid = request['cookie'].get("uid")
     if not uid: return
-    relevant_data = request['data']
-    storage.update_unit("users", control_data={"id": uid}, relevant_data=relevant_data)
+    data = request['data']
+    storage.update_unit("users", control_data={"id": uid}, relevant_data=request['data'])
 
 
 @server.add_udp_handler("change_color")
@@ -113,6 +113,12 @@ async def sending(addr, request):
     
     def loop(self, simulation):
         users_info = storage.get_units_by("users", id=simulation['users'])
+        for user in users_info:
+            if user['keys']:
+                user['pos'][1] += 10 * (user['keys']['s'] - user['keys']['w'])
+                user['pos'][0] += 10 * (user['keys']['d'] - user['keys']['a'])
+                for key in user['keys']:
+                    user['keys'][key] = max(user['keys'][key] - 1, 0)
     
     simulation = Simulation(loop)
     unit = storage.add_unit("simulations", {"simulation_id": room_id,

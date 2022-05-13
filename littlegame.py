@@ -1,3 +1,4 @@
+from copy import deepcopy
 import socket as sk
 from socket import socket
 from threading import Thread
@@ -23,9 +24,17 @@ def transfer(client, fps=50):
     time_sleep = 1 / fps
     while client.transfer_live:
         client.call_udp(method="get_data", data={}, address=SERVER_ADDRESS, response=True, caching=True)
-        client.call_udp(method="send_data", data={"pos": cache.actual_data}, address=SERVER_ADDRESS, response=False)
+        print(cache.actual_data)
+        client.call_udp(method="send_data", data={"keys": cache.actual_data}, address=SERVER_ADDRESS, response=False)
         time.sleep(time_sleep)
 
+
+cache.actual_data = {
+    "w": 0,
+    "a": 0,
+    "s": 0,
+    "d": 0
+}
 
 _client.call_udp(method="connect", data={}, address=SERVER_ADDRESS, response=True, cookie=['uid'])
 _client.call_udp(method="create_simulation", data={}, address=SERVER_ADDRESS, response=True, cookie=['id'])
@@ -48,14 +57,6 @@ def change_server():
     sim = sims[0]
     _client.call_udp(method="enter_simulation", data={'id': sim}, address=SERVER_ADDRESS, response=True, cookie=['id'])
         
-    
-struct_balls = {
-    "K_UP": False,
-    "K_DOWN": False,
-    "K_LEFT": False,
-    "KEY_RIGHT": False
-}
-        
 
 if __name__ == '__main__':
     screen = pygame.display.set_mode((800, 600))
@@ -63,16 +64,23 @@ if __name__ == '__main__':
     
     is_playing = True
     while is_playing:
+        for key in cache.actual_data:
+            if cache.actual_data[key] == 0:
+                continue
+            cache.actual_data[key] = cache.actual_data[key] - 1
         for e in pygame.event.get():
             if e.type == pygame.QUIT:
                 _client.transfer_live = False
                 is_playing = False
             elif e.type == pygame.MOUSEMOTION:
-                cache.actual_data = list(e.pos)
+                pass
             elif e.type == pygame.KEYDOWN and e.key == pygame.K_1:
                 change_color(_client)
             elif e.type == pygame.KEYDOWN and e.key == pygame.K_2:
                 change_server()
+            if e.type == pygame.KEYDOWN:
+                if e.unicode in cache.actual_data:
+                    cache.actual_data[e.unicode] = 5
         
         screen.fill('black')
         data = cache.get_last_data()['data']
