@@ -1,3 +1,4 @@
+from calendar import c
 from copy import deepcopy
 import socket as sk
 from socket import socket
@@ -6,6 +7,13 @@ import time
 import pygame
 import json
 from game.app.client import Cache, Client
+import argparse
+
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--host", type=str, default="127.0.0.1")
+parser.add_argument("--port", type=int, default=9000)
+args = parser.parse_args()
 
 
 pygame.init()
@@ -15,7 +23,7 @@ def serialize(json_data):
     return json.dumps(json_data).encode()    
 
 
-SERVER_ADDRESS = ('192.168.0.104', 9000)
+SERVER_ADDRESS = (args.host, args.port)
 
 cache = Cache()
 _client = Client(cache)
@@ -24,8 +32,8 @@ def transfer(client, fps=50):
     time_sleep = 1 / fps
     while client.transfer_live:
         client.call_udp(method="get_data", data={}, address=SERVER_ADDRESS, response=True, caching=True)
-        client.call_udp(method="send_data", data={"keys": cache.actual_data,
-                                                  "e": cache.get_events()}, address=SERVER_ADDRESS, response=False)
+        client.call_udp(method="send_data", data={"keys": cache.actual_data},
+                        address=SERVER_ADDRESS, response=False, events=cache.get_events())
         time.sleep(time_sleep)
 
 
@@ -42,11 +50,6 @@ _client.run_main_loop(60, transfer, "transfer_live")
 
 
 color_id = 0
-def change_color(client):
-    global color_id
-    colors = ['blue', 'red', 'green']
-    client.call_udp(method="change_color", data={"color": colors[color_id]}, address=SERVER_ADDRESS)
-    color_id = (color_id + 1) % 3
 
 
 def change_server():
@@ -59,7 +62,7 @@ def change_server():
         
 
 if __name__ == '__main__':
-    screen = pygame.display.set_mode((800, 600))
+    screen = pygame.display.set_mode((800, 800))
     clock = pygame.time.Clock()
     
     is_playing = True
@@ -76,7 +79,9 @@ if __name__ == '__main__':
             elif e.type == pygame.MOUSEBUTTONDOWN:
                 cache.events["mouse_click"] = e.pos
             elif e.type == pygame.KEYDOWN and e.key == pygame.K_1:
-                change_color(_client)
+                colors = ['blue', 'red', 'green']
+                cache.events["change_color"] = colors[color_id]
+                color_id = (color_id + 1) % 3
             elif e.type == pygame.KEYDOWN and e.key == pygame.K_2:
                 change_server()
         

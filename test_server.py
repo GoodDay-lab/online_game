@@ -4,7 +4,6 @@ from game.app.simulation import Simulation
 import logging
 from threading import Thread
 import math
-from pygame import K_UP, K_DOWN, K_LEFT, K_RIGHT
 
 
 storage = Storage()
@@ -111,7 +110,7 @@ async def sending_data(addr, request):
     simulation = storage.get_unit("simulations", simulation_id=id)
     if not simulation: return
     user = storage.get_unit("users", id=uid)
-    events = request['data']['e']
+    events = request['events']
     for event in events:
         if event == "mouse_click":
             d_x, d_y = events['mouse_click'][0] - user["pos"][0], events['mouse_click'][1] - user["pos"][1]
@@ -119,13 +118,8 @@ async def sending_data(addr, request):
             simulation['trash'].append(user["pos"][0] + math.cos(angle) * 40)
             simulation['trash'].append(user["pos"][1] + math.sin(angle) * 40)
             simulation['trash'].append(angle)
-
-
-@server.add_udp_handler("change_color")
-async def change_color(addr, request):
-    uid = request['cookie'].get("uid")
-    if not uid: return
-    storage.update_unit("users", control_data={"id": uid}, relevant_data=request['data'])
+        if event == "change_color":
+            storage.update_unit("users", control_data={"id": uid}, relevant_data={'color': events['change_color']})
 
 
 @server.add_udp_handler("create_simulation")

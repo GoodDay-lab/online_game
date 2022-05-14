@@ -17,13 +17,12 @@ class TransactionError(Exception):
 
 
 class Cache():
-    def __init__(self, offset=1, default_events={}) -> None:
+    def __init__(self, offset=1) -> None:
         self.cache = []
         self.offset = offset
         self.actual_data = None
         self.cookie = {}
-        self.default_events = default_events
-        self.events = copy.deepcopy(default_events)
+        self.events = {}
     
     def get_last_data(self):
         if self.cache:
@@ -44,7 +43,7 @@ class Cache():
     
     def get_events(self):
         buffer = copy.deepcopy(self.events)
-        self.events = copy.deepcopy(self.default_events)
+        self.events = {}
         return buffer
 
 
@@ -75,12 +74,14 @@ class Client():
     
     def call_udp(self, method="ping", data=None,
                  address=None, response=False, callback=None,
-                 caching=False, cookie=False):
+                 caching=False, cookie=False, events=None):
         if data is None:
             data = {}
+        if events is None:
+            events = {}
         if type(data) != dict:
             raise EncoderException("Wrong data type!")
-        request = {'type': method, 'data': data, 'cookie': self.cache.cookie}
+        request = {'type': method, 'data': data, 'cookie': self.cache.cookie, 'events': events}
         request = json.dumps(request).encode()
         self.send_udp(request, address)
         if response:
