@@ -110,12 +110,14 @@ async def sending_data(addr, request):
     if not id: return
     simulation = storage.get_unit("simulations", simulation_id=id)
     if not simulation: return
+    user = storage.get_unit("users", id=uid)
     events = request['data']['e']
     for event in events:
         if event == "mouse_click":
-            simulation['trash'].append(events['mouse_click'][0])
-            simulation['trash'].append(events['mouse_click'][1])
-            simulation['trash'].append(math.pi / 4)
+            simulation['trash'].append(user["pos"][0])
+            simulation['trash'].append(user["pos"][1])
+            d_x, d_y = events['mouse_click'][0] - user["pos"][0], events['mouse_click'][1] - user["pos"][1]
+            simulation['trash'].append(math.atan2(d_y, d_x))
 
 
 @server.add_udp_handler("change_color")

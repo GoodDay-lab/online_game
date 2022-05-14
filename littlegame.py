@@ -15,7 +15,7 @@ def serialize(json_data):
     return json.dumps(json_data).encode()    
 
 
-SERVER_ADDRESS = ('127.0.0.1', 9000)
+SERVER_ADDRESS = ('192.168.0.104', 9000)
 
 cache = Cache()
 _client = Client(cache)
