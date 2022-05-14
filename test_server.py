@@ -114,10 +114,11 @@ async def sending_data(addr, request):
     events = request['data']['e']
     for event in events:
         if event == "mouse_click":
-            simulation['trash'].append(user["pos"][0])
-            simulation['trash'].append(user["pos"][1])
             d_x, d_y = events['mouse_click'][0] - user["pos"][0], events['mouse_click'][1] - user["pos"][1]
-            simulation['trash'].append(math.atan2(d_y, d_x))
+            angle = math.atan2(d_y, d_x)
+            simulation['trash'].append(user["pos"][0] + math.cos(angle) * 40)
+            simulation['trash'].append(user["pos"][1] + math.sin(angle) * 40)
+            simulation['trash'].append(angle)
 
 
 @server.add_udp_handler("change_color")
@@ -135,6 +136,11 @@ async def sending(addr, request):
     room_id = str(uuid.uuid4())
     
     def loop(self, simulation):
+        
+        def collide_point(rect, point):
+            return rect[0] - rect[2] < point[0] < rect[0] + rect[2] and \
+                rect[1] - rect[3] < point[1] < rect[1] + rect[3]
+        
         users_info = storage.get_units_by("users", id=simulation['users'])
         for user in users_info:
             if user['keys']:
@@ -145,14 +151,24 @@ async def sending(addr, request):
         len_trash = len(simulation["trash"])
         i = 0
         speed = 5
-        while i < len_trash:
+        while i < len(simulation['trash']):
             x_p, y_p, angle = simulation["trash"][i], simulation["trash"][i + 1], simulation["trash"][i + 2]
+            if simulation["trash"]:
+                flag = False
+                for user in users_info:
+                    rect = user["pos"] + [user["size"]] + [user['size']]
+                    if collide_point(rect, [x_p, y_p]):
+                        simulation["trash"] = simulation["trash"][:i] + simulation["trash"][i + 3:]
+                        len_trash -= 3
+                        flag = True
+                if flag: continue
             y_p += math.sin(angle) * speed
             x_p += math.cos(angle) * speed
             simulation["trash"][i], simulation["trash"][i + 1] = x_p, y_p
             if not (-10 < simulation["trash"][i] < 810) and not (-10 < simulation["trash"][i + 1] < 610):
                 simulation["trash"] = simulation["trash"][:i] + simulation["trash"][i + 3:]
                 len_trash -= 3
+                continue
             i += 3
     
     simulation = Simulation(loop)
