@@ -17,7 +17,7 @@ class Server:
         if not logger:
             self.logger = logging.getLogger()
         self.logger.setLevel(logging.INFO)
-        self.logger.addHandler(logging.StreamHandler())
+        # self.logger.addHandler(logging.StreamHandler())
         
         self.max_players = (config.get('max_players') if 'max_players' in config else 100)
         self.blocking = (config.get('blocking') if 'blocking' in config else 0)

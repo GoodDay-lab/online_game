@@ -24,7 +24,6 @@ def transfer(client, fps=50):
     time_sleep = 1 / fps
     while client.transfer_live:
         client.call_udp(method="get_data", data={}, address=SERVER_ADDRESS, response=True, caching=True)
-        print(cache.actual_data)
         client.call_udp(method="send_data", data={"keys": cache.actual_data}, address=SERVER_ADDRESS, response=False)
         time.sleep(time_sleep)
 
@@ -65,14 +64,10 @@ if __name__ == '__main__':
     is_playing = True
     while is_playing:
         keys = pygame.key.get_pressed()
-        cache.actual_data['w'] = keys[pygame.K_w] * 6
-        cache.actual_data['s'] = keys[pygame.K_s] * 6
-        cache.actual_data['a'] = keys[pygame.K_a] * 6
-        cache.actual_data['d'] = keys[pygame.K_d] * 6
-        for key in cache.actual_data:
-            if cache.actual_data[key] == 0:
-                continue
-            cache.actual_data[key] = cache.actual_data[key] - 1
+        cache.actual_data['w'] = keys[pygame.K_w]
+        cache.actual_data['s'] = keys[pygame.K_s]
+        cache.actual_data['a'] = keys[pygame.K_a]
+        cache.actual_data['d'] = keys[pygame.K_d]
         for e in pygame.event.get():
             if e.type == pygame.QUIT:
                 _client.transfer_live = False
@@ -83,9 +78,6 @@ if __name__ == '__main__':
                 change_color(_client)
             elif e.type == pygame.KEYDOWN and e.key == pygame.K_2:
                 change_server()
-            if e.type == pygame.KEYDOWN:
-                if e.unicode in cache.actual_data:
-                    cache.actual_data[e.unicode] = 5
         
         screen.fill('black')
         data = cache.get_last_data()

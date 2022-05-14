@@ -39,17 +39,23 @@ async def connecting(addr, request):
 @server.add_udp_handler("enter_simulation")
 async def enter_sim(addr, request):
     uid = request['cookie'].get("uid")
+    old_simulation_id = request['cookie'].get("id")
     simulation_id = request['data'].get("id")
-    if not uid:
-        return
-    elif not simulation_id:
-        return
+    
+    if not uid: return
+    if not simulation_id: return
+    if not old_simulation_id: return
+    
     user = storage.get_unit("users", id=uid)
     if not user:
         return
     simulation = storage.get_unit("simulations", simulation_id=simulation_id)
     if not simulation:
         return
+    old_simulation = storage.get_unit("simulations", simulation_id=old_simulation_id)
+    if not old_simulation:
+        return
+    old_simulation["users"].remove(user['id'])
     simulation["users"].append(uid)
     simulation["updated"] = False
     response = {"id": simulation_id}
@@ -93,6 +99,8 @@ async def getting_data(addr, request):
 async def sending_data(addr, request):
     uid = request['cookie'].get("uid")
     if not uid: return
+    for key in request['data']['keys']:
+        request['data']['keys'][key] *= 6
     storage.update_unit("users", control_data={"id": uid}, relevant_data=request['data'])
 
 
