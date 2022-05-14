@@ -3,6 +3,7 @@ from game.app.storage import Storage
 from game.app.simulation import Simulation
 import logging
 from threading import Thread
+import math
 from pygame import K_UP, K_DOWN, K_LEFT, K_RIGHT
 
 
@@ -16,6 +17,7 @@ storage.add_table("users", {"id": str,
 storage.add_table("simulations", {"simulation_id": str,
                                   "simulation": Simulation,
                                   "users": list,
+                                  "trash": list,
                                   "updated": bool})
 
 
@@ -88,10 +90,11 @@ async def getting_data(addr, request):
         response = {"status": 0, "msg": "simulation with id undefined"}
         return await server.send_udp(response, addr)
     
+    trash = simulation["trash"]
     users = simulation["users"]
     users_info = storage.get_units_by("users", id=users)
     
-    data = {"status": 1, "data": list(users_info)}
+    data = {"status": 1, "data": {"u": list(users_info), "t": trash}}
     await server.send_udp(data, addr)
 
 
@@ -101,7 +104,18 @@ async def sending_data(addr, request):
     if not uid: return
     for key in request['data']['keys']:
         request['data']['keys'][key] *= 6
-    storage.update_unit("users", control_data={"id": uid}, relevant_data=request['data'])
+    storage.update_unit("users", control_data={"id": uid}, relevant_data={"keys": request['data']['keys']})
+    
+    id = request['cookie'].get('id')
+    if not id: return
+    simulation = storage.get_unit("simulations", simulation_id=id)
+    if not simulation: return
+    events = request['data']['e']
+    for event in events:
+        if event == "mouse_click":
+            simulation['trash'].append(events['mouse_click'][0])
+            simulation['trash'].append(events['mouse_click'][1])
+            simulation['trash'].append(math.pi / 4)
 
 
 @server.add_udp_handler("change_color")
@@ -126,12 +140,25 @@ async def sending(addr, request):
                 user['pos'][0] += 1.4 * (user['keys']['d'] - user['keys']['a'])
                 for key in user['keys']:
                     user['keys'][key] = max(user['keys'][key] - 1, 0)
+        len_trash = len(simulation["trash"])
+        i = 0
+        speed = 5
+        while i < len_trash:
+            x_p, y_p, angle = simulation["trash"][i], simulation["trash"][i + 1], simulation["trash"][i + 2]
+            y_p += math.sin(angle) * speed
+            x_p += math.cos(angle) * speed
+            simulation["trash"][i], simulation["trash"][i + 1] = x_p, y_p
+            if not (-10 < simulation["trash"][i] < 810) and not (-10 < simulation["trash"][i + 1] < 610):
+                simulation["trash"] = simulation["trash"][:i] + simulation["trash"][i + 3:]
+                len_trash -= 3
+            i += 3
     
     simulation = Simulation(loop)
     unit = storage.add_unit("simulations", {"simulation_id": room_id,
                                             "simulation": simulation,
                                             "users": [uid],
-                                            "updated": True})
+                                            "updated": True,
+                                            "trash": []})
     simulation.start(unit)
     response = {"status": 1, "id": room_id}
     await server.send_udp(response, addr)

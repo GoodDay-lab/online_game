@@ -5,6 +5,7 @@ from threading import Thread
 import time
 import logging
 import asyncio
+import copy
 
 
 class EncoderException(Exception):
@@ -16,11 +17,13 @@ class TransactionError(Exception):
 
 
 class Cache():
-    def __init__(self, offset=1) -> None:
+    def __init__(self, offset=1, default_events={}) -> None:
         self.cache = []
         self.offset = offset
         self.actual_data = None
         self.cookie = {}
+        self.default_events = default_events
+        self.events = copy.deepcopy(default_events)
     
     def get_last_data(self):
         if self.cache:
@@ -38,6 +41,11 @@ class Cache():
     
     def set_cookie(self, key, data):
         self.cookie[key] = data
+    
+    def get_events(self):
+        buffer = copy.deepcopy(self.events)
+        self.events = copy.deepcopy(self.default_events)
+        return buffer
 
 
 class Client():

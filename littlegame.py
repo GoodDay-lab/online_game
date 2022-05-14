@@ -24,7 +24,8 @@ def transfer(client, fps=50):
     time_sleep = 1 / fps
     while client.transfer_live:
         client.call_udp(method="get_data", data={}, address=SERVER_ADDRESS, response=True, caching=True)
-        client.call_udp(method="send_data", data={"keys": cache.actual_data}, address=SERVER_ADDRESS, response=False)
+        client.call_udp(method="send_data", data={"keys": cache.actual_data,
+                                                  "e": cache.get_events()}, address=SERVER_ADDRESS, response=False)
         time.sleep(time_sleep)
 
 
@@ -72,8 +73,8 @@ if __name__ == '__main__':
             if e.type == pygame.QUIT:
                 _client.transfer_live = False
                 is_playing = False
-            elif e.type == pygame.MOUSEMOTION:
-                pass
+            elif e.type == pygame.MOUSEBUTTONDOWN:
+                cache.events["mouse_click"] = e.pos
             elif e.type == pygame.KEYDOWN and e.key == pygame.K_1:
                 change_color(_client)
             elif e.type == pygame.KEYDOWN and e.key == pygame.K_2:
@@ -84,10 +85,18 @@ if __name__ == '__main__':
         if 'data' not in data:
             continue
         data = data['data']
-        for person in data:
+        for person in data['u']:
             pygame.draw.circle(screen, color=person["color"],
                                center=person['pos'],
                                radius=person['size'], width=8)
+        i = 0
+        while i < len(data['t']):
+            pos = data['t'][i:i+2]
+            pygame.draw.circle(screen, color="red",
+                               center=pos,
+                               radius=3)
+            i += 3
+            
         clock.tick(60)
         pygame.display.flip()
         
