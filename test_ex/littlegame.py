@@ -1,4 +1,5 @@
-from calendar import c
+import sys
+sys.path.append('..')
 from copy import deepcopy
 import socket as sk
 from socket import socket
@@ -6,7 +7,7 @@ from threading import Thread
 import time
 import pygame
 import json
-from game.app.client import Cache, Client
+from app.client import Cache, Client
 import argparse
 
 

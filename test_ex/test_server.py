@@ -1,8 +1,9 @@
-from game.app.server import *
-from game.app.storage import Storage
-from game.app.simulation import Simulation
+import sys
+sys.path.append('..')
+from app.server import *
+from app.storage import Storage
+from app.simulation import Simulation
 import logging
-from threading import Thread
 import math
 
 

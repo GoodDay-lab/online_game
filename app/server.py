@@ -83,6 +83,7 @@ class Server:
         
         while is_running:
             raw, addr = sock.recvfrom(self.buffer_size)
+            addr = list(addr)
             
             self.logger.info(f"Someone connected to UDP {addr[0]}:{addr[1]}")
             
@@ -174,9 +175,9 @@ class Server:
         """
         try:
             sock = self._get_udp_socket()
-            sock.sendto(json.dumps(data).encode(), addr)
-        except:
-            print(len(json.dumps(data).encode()))
+            sock.sendto(json.dumps(data).encode(), tuple(addr))
+        except Exception as e:
+            print('here', len(json.dumps(data).encode()))
     
     def set_an_background_task(self, event, *args, **kwargs):
         asyncio.ensure_future(event(*args, **kwargs))
