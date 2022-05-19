@@ -1,9 +1,5 @@
 import sys
 sys.path.append('..')
-from copy import deepcopy
-import socket as sk
-from socket import socket
-from threading import Thread
 import time
 import pygame
 import json

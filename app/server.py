@@ -9,7 +9,7 @@ import uuid
 
 
 class Server:
-    def __init__(self, logger=None, manager=None, config=None):
+    def __init__(self, logger=None, config=None):
         if not config:
             config = {}
             
@@ -62,10 +62,6 @@ class Server:
         thread = threading.Thread(target=self._run_thread, args=(loop,))
         thread.start()
         asyncio.run_coroutine_threadsafe(self._run_udp_server(host, port), loop)
-        loop = asyncio.new_event_loop()
-        thread = threading.Thread(target=self._run_thread, args=(loop,))
-        thread.start()
-        asyncio.run_coroutine_threadsafe(self._run_tcp_server(host, port + 1), loop)
     
     async def _run_udp_server(self, host, port):
         """
@@ -167,7 +163,9 @@ class Server:
         except:
             self.logger.warning("Cannot send to sid %s", sid)
             return
-        _socket.send(json.dumps(data).encode())
+        if type(data) == dict:
+            data = json.dumps(data).encode()
+        _socket.send(data)
     
     async def send_udp(self, data, addr):
         """

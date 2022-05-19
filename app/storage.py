@@ -74,4 +74,15 @@ class Storage:
             if all(unit[key] in data[key] for key in data):
                 buffer.append(unit)
         return buffer
+
+    def update_units(self, tablename, control_data, relevant_data):
+        if tablename not in self.tables:
+            raise ValueError("There's not table name %s" % tablename)
+        
+        for i, unit in enumerate(self.tables[tablename]['units']):
+            if all(unit[key] in control_data[key]
+                   for key in control_data):
+                for key in relevant_data:
+                    if type(relevant_data[key]) == self.tables[tablename]['template'][key]:
+                        self.tables[tablename]['units'][i][key] = relevant_data[key]
             

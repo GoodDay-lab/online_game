@@ -8,6 +8,7 @@ from app.storage import Storage
 
 import json
 import uuid
+import random
 
 
 logger = logging.getLogger()
@@ -18,14 +19,17 @@ storage.add_table("users", {"id": str,
                             "pos": int,
                             "speed": float,
                             "keys": dict,
-                            "size": list})
+                            "size": list,
+                            "chat_update": bool})
 storage.add_table("sessions", {"id": str,
                               "users": list,
                               "ball": list,
                               "is_started": bool,
                               "is_finished": bool,
                               "are_ready": list,
-                              "score": list})
+                              "score": list,
+                              "messages": list,
+                              "chat_updated": bool})
 
 @server.add_udp_handler("connect")
 async def connecting(addr, request):
@@ -38,11 +42,13 @@ async def connecting(addr, request):
                                    'w': 0,
                                    's': 0
                                },
-                               "size": [4, 20]})
+                               "size": [4, 20],
+                               "chat_update": False})
     response = {"uid": uid}
     await server.send_udp(response, addr)
 
 
+time1 = time.time()
 @server.add_udp_handler("transfer_data")
 async def getting_data(addr, request):
     uid = request['cookie'].get('uid')
@@ -74,8 +80,12 @@ async def getting_data(addr, request):
     score = session.get("score")
     t = int(time.time() - session.get("time"))
     data = {"status": 1, "data": {"u0": u0, 'u1': u1, "b": ball, "s": score, "r": ready, 't': t,
-                                  "is_started": is_started, "is_finished": is_finished}}
+                                  "is_started": is_started, "is_finished": is_finished, 'chat': user['chat_update']}}
     await server.send_udp(data, addr)
+    
+    global time1
+    # print("gone", time.time() - time1, "s")
+    time1 = time.time()
 
 
 @server.add_udp_handler("get_sessions")
@@ -93,21 +103,50 @@ async def enter_sim(addr, request):
     
     if not uid: return
     if not simulation_id: return
-    if not old_simulation_id: return
     
     user = storage.get_unit("users", id=uid)
     if not user:
         return
     simulation = storage.get_unit("sessions", id=simulation_id)
     if not simulation:
-        return
+        return server.send_udp({'status': 0})
     old_simulation = storage.get_unit("sessions", id=old_simulation_id)
-    if not old_simulation:
-        return
-    old_simulation["users"].remove(user['id'])
+    if old_simulation:
+        old_simulation["users"].remove(user['id'])
     simulation["users"].append(uid)
     response = {"sid": simulation_id}
     await server.send_udp(response, addr)
+
+
+@server.add_udp_handler("send_msg")
+async def send_msg(addr, request):
+    uid = request['cookie'].get('uid')
+    sid = request['cookie'].get('sid')
+    if not uid or not sid: return
+    msg = request['data']['msg']
+    user = storage.get_unit("users", id=uid)
+    session = storage.get_unit("sessions", id=sid)
+    if not user or not session: return
+    session['messages'].append({'author': uid, 'msg': msg, 'w': [uid]})
+    storage.update_units("users", control_data={'id': session['users']}, relevant_data={'chat_update': True})
+
+@server.add_udp_handler("get_msg")
+async def get_msg(addr, request):
+    uid = request['cookie'].get('uid')
+    sid = request['cookie'].get('sid')
+    if not uid or not sid: return
+    user = storage.get_unit("users", id=uid)
+    session = storage.get_unit("sessions", id=sid)
+    if not user or not session: return
+    msg = session['messages'][-1]
+    if msg['author'] != uid:
+        msg['w'].append(uid)
+        response = {'status': 1, 'author': msg['author'], 'text': msg['msg'], 'w': len(msg['w'])}
+        user['chat_update'] = False
+        return await server.send_udp(response, addr)
+    response = {'status': 0}
+    user['chat_update'] = False
+    return await server.send_udp(response, addr)
 
 
 @server.add_udp_handler("create_session")
@@ -134,6 +173,8 @@ async def create_session(addr, request):
             get_rect = lambda pos, size, p: [int((5 if not p else 95)),
                                              int(pos), size[0] / 2, size[1] / 2]
             
+            if session['ball'][3] == 4:
+                session['ball'][3] = random.random() * 2 * math.pi
             ball = session.get('ball')
             i = 0
             for user in users_info:
@@ -165,15 +206,17 @@ async def create_session(addr, request):
     simulation = Simulation(loop)
     unit = storage.add_unit("sessions", {"id": sid,
                                          "users": [uid],
-                                         "ball": ['red', 50, 50, math.pi * 7 / 6, 1.4],
+                                         "ball": ['red', 50, 50, 4, 1.4],
                                          "is_started": False,
                                          "is_finished": False,
                                          "are_ready": [],
                                          "score": [0, 0],
-                                         "time": time.time()})
+                                         "time": time.time(),
+                                         "messages": [],
+                                         "chat_updated": False})
     simulation.start(unit)
     response = {"status": 1, "sid": sid}
     await server.send_udp(response, addr)
 
 
-server.run_polling(host="127.0.0.1", port=9000)
+server.run_polling(host="0.0.0.0", port=9000)

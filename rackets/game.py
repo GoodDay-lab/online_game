@@ -1,3 +1,4 @@
+from socket import SO_VM_SOCKETS_BUFFER_SIZE
 import sys
 
 from time import sleep
@@ -21,11 +22,98 @@ SERVER_ADDRESS = (args.host, args.port)
 cache = Cache()
 client = Client(cache)
 
+
+class Chat():
+    YOU_COLOR = "#00bfff"
+    ENEMY_COLOR = "#ff7f50"
+    BACKGROUND_COLOR = '#f0f0f0'
+    CHARS_IN_ROW = 30
+    MAX_COL = 6
+    MESSAGE_FONT = pygame.font.SysFont("Comic Sans MS", 24)
+    
+    def __init__(self):
+        self.messages = []
+        self.surfaces = []
+    
+    def send_message(self, msg):
+        if len(msg) == 0:
+            return 0
+        client.call_udp(method="send_msg", data={'msg': msg}, address=SERVER_ADDRESS)
+        self.messages.append({"author": cache.cookie.get("uid"), "text": msg})
+        global chat_update
+        chat_update = True
+        return 1
+    
+    def callback(self, response):
+        if 'data' not in response:
+            return
+        if not response['data'].get('chat'):
+            return
+        response = client.call_udp(method="get_msg", address=SERVER_ADDRESS, response=True)
+        if response['status']:
+            self.messages.append(response)
+            global chat_update
+            chat_update = True
+    
+    def get_message(self):
+        if len(self.messages):
+            return self.messages.pop(-1)
+    
+    def create_surface(self):
+        message = self.get_message()
+        if message is None: return
+        message_arr = self.delimite_message(message['text'])
+        author = message['author']
+        
+        color = None
+        if author == cache.cookie['uid']:
+            color = self.YOU_COLOR
+        else:
+            color = self.ENEMY_COLOR            
+            
+        surface = pygame.Surface((280, 20 + len(message_arr) * 40))
+        surface.fill(color)
+        for i, line in enumerate(message_arr):
+            text_sur = self.MESSAGE_FONT.render(' '.join(line), 1, 'black')
+            surface.blit(text_sur, (15, 15 + i * 40))
+            pygame.draw.rect(surface, 'gray', surface.get_rect(), width=3)
+        self.slide(surface.get_rect().height + 10)
+        sprite = pygame.sprite.Sprite()
+        sprite.image = surface
+        sprite.rect = surface.get_rect()
+        sprite.rect.x += 10
+        sprite.rect.y += 10
+        self.surfaces.append(sprite)
+        return self.surfaces
+
+    def slide(self, height):
+        for surface in self.surfaces:
+            surface.rect.y += height
+            if surface.rect.y > 800:
+                self.surfaces.remove(surface)
+    
+    def delimite_message(self, message):
+        rows = [[]]
+        cur_len = 0
+        
+        for word in message.split():
+            if cur_len + len(word) > self.CHARS_IN_ROW:
+                rows.append([])
+                cur_len = 0
+            rows[-1].append(word)
+            cur_len += len(word) + 1
+        
+        return rows[:self.MAX_COL]
+        
+
+chat = Chat()
+    
+
 def transfer_data_loop(client, fps=50):
     interval = 1 / fps
     while client.transfer_live:
         client.call_udp(method="transfer_data", data={'keys': cache.actual_data}, address=SERVER_ADDRESS,
-                        events=cache.get_events(), response=True, caching=True)
+                        events=cache.get_events(), response=True, caching=True, callback=chat.callback)
         sleep(interval)
     
 
@@ -37,26 +125,47 @@ def print_sims(client):
 
 def enter_first_s(client):
     s = print_sims(client)['s'][0]
-    client.call_udp(method="enter_session", data={'sid': s}, address=SERVER_ADDRESS, response=True, cookie=['sid'])
+    enter_by_sid(client, s)
+
+
+def enter_by_sid(client, sid):
+    client.call_udp(method="enter_session", data={'sid': sid}, address=SERVER_ADDRESS, response=True, cookie=['sid'])
+    print(1)
 
 
 cache.actual_data = {'w': 0, 's': 0}
 client.call_udp(method="connect", address=SERVER_ADDRESS, response=True, cookie=['uid'])
-client.call_udp(method="create_session", address=SERVER_ADDRESS, response=True, cookie=['sid'])
+
+if args.sid:
+    enter_by_sid(client, args.sid)
+else:
+    client.call_udp(method="create_session", address=SERVER_ADDRESS, response=True, cookie=['sid'])
 client.run_main_loop(60, transfer_data_loop, "transfer_live")
 
 
 if __name__ == '__main__':
-    screen = pygame.display.set_mode((800, 600))
-    const_w = screen.get_width() / 100
-    const_h = screen.get_height() / 100
-    WIDTH = screen.get_width()
-    HEIGHT = screen.get_height()
+    mscreen = pygame.display.set_mode((1000, 600))
+    
+    WIDTH = mscreen.get_width() - 300
+    HEIGHT = mscreen.get_height()
+    CHAR_WIDTH = mscreen.get_width() - WIDTH
+    CHAR_HEIGHT = HEIGHT
+    GAME_RECT = pygame.Rect(0, 0, WIDTH, HEIGHT)
+    CHAT_RECT = pygame.Rect(WIDTH, 0, CHAR_WIDTH, CHAR_HEIGHT)
+    
+    screen = pygame.Surface(GAME_RECT.size)
+    chat_screen = pygame.Surface(CHAT_RECT.size)
+    chat_screen.fill(chat.BACKGROUND_COLOR)
+    
+    const_w = WIDTH / 100
+    const_h = HEIGHT / 100
     clock = pygame.time.Clock()
     
     score_font = pygame.font.SysFont('Comic Sans MS', 48)
     ready_font = pygame.font.SysFont('Comic Sans MS', 68)
     time_font = pygame.font.SysFont('Comic Sans MS', 30)
+    
+    chat_update = True
     
     is_running = True
     while is_running:
@@ -73,6 +182,12 @@ if __name__ == '__main__':
                 print_sims(client)
             elif e.type == pygame.KEYDOWN and e.key == pygame.K_1:
                 enter_first_s(client)
+            elif e.type == pygame.KEYDOWN and e.key == pygame.K_2:
+                chat.send_message("HI-HI-HI-HA! HI-HI-HI-HA! HI-HI-HI-HA! HI-HI-HI-HA! HI-HI-HI-HA! HI-HI-HI-HA! HI-HI-HI-HA!")
+            elif e.type == pygame.KEYDOWN and e.key == pygame.K_3:
+                chat.send_message("I'm a Winner! You're loser!! HAHAHA")
+            elif e.type == pygame.KEYDOWN and e.key == pygame.K_4:
+                chat.send_message("Bibi! Bye! Bye!")
         
         screen.fill('black')
         data = cache.get_last_data()
@@ -118,5 +233,15 @@ if __name__ == '__main__':
         ball = data['b']
         pygame.draw.circle(screen, ball[0], (p2mw(ball[1]), p2mh(ball[2])), 20)
         
-        pygame.display.flip()
+        mscreen.blit(screen, GAME_RECT)
+        if chat_update:
+            surs = chat.create_surface()
+            chat_screen.fill(chat.BACKGROUND_COLOR)
+            if surs:
+                for surface in surs[::-1]:
+                    chat_screen.blit(surface.image, (surface.rect.x, surface.rect.y))
+            mscreen.blit(chat_screen, CHAT_RECT)
+            chat_update = False
+            pygame.display.update(CHAT_RECT)
+        pygame.display.update(GAME_RECT)
         clock.tick(60)

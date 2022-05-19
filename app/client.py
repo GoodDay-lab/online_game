@@ -48,7 +48,7 @@ class Cache():
 
 
 class Client():
-    def __init__(self, cache) -> None:
+    def __init__(self, cache):
         self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         
         self.buffer_size = 2 ** 14
