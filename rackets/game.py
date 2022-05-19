@@ -30,6 +30,7 @@ class Chat():
     CHARS_IN_ROW = 30
     MAX_COL = 6
     MESSAGE_FONT = pygame.font.SysFont("Comic Sans MS", 24)
+    AUTHOR_FONT = pygame.font.SysFont("Comic Sans MS", 18)
     
     def __init__(self):
         self.messages = []
@@ -71,12 +72,14 @@ class Chat():
         else:
             color = self.ENEMY_COLOR            
             
-        surface = pygame.Surface((280, 20 + len(message_arr) * 40))
+        surface = pygame.Surface((280, 40 + len(message_arr) * 24))
         surface.fill(color)
         for i, line in enumerate(message_arr):
             text_sur = self.MESSAGE_FONT.render(' '.join(line), 1, 'black')
-            surface.blit(text_sur, (15, 15 + i * 40))
+            surface.blit(text_sur, (15, 15 + i * 24))
             pygame.draw.rect(surface, 'gray', surface.get_rect(), width=3)
+        author_sur = self.AUTHOR_FONT.render("Author: " + author[:15] + '..', 1, '#404040')
+        surface.blit(author_sur, (25, surface.get_rect().height - 25))
         self.slide(surface.get_rect().height + 10)
         sprite = pygame.sprite.Sprite()
         sprite.image = surface
@@ -104,6 +107,11 @@ class Chat():
             cur_len += len(word) + 1
         
         return rows[:self.MAX_COL]
+    
+    def clear(self):
+        self.surfaces = []
+        global chat_update
+        chat_update = True
         
 
 chat = Chat()
@@ -119,7 +127,6 @@ def transfer_data_loop(client, fps=50):
 
 def print_sims(client):
     r = client.call_udp(method="get_sessions", response=True, address=SERVER_ADDRESS)
-    print(r)
     return r
 
 
@@ -129,8 +136,8 @@ def enter_first_s(client):
 
 
 def enter_by_sid(client, sid):
+    chat.clear()
     client.call_udp(method="enter_session", data={'sid': sid}, address=SERVER_ADDRESS, response=True, cookie=['sid'])
-    print(1)
 
 
 cache.actual_data = {'w': 0, 's': 0}
@@ -183,7 +190,7 @@ if __name__ == '__main__':
             elif e.type == pygame.KEYDOWN and e.key == pygame.K_1:
                 enter_first_s(client)
             elif e.type == pygame.KEYDOWN and e.key == pygame.K_2:
-                chat.send_message("HI-HI-HI-HA! HI-HI-HI-HA! HI-HI-HI-HA! HI-HI-HI-HA! HI-HI-HI-HA! HI-HI-HI-HA! HI-HI-HI-HA!")
+                chat.send_message("HI-HI-HI-HA! HI-HI-HI-HA! HI-HI-HI-HA!")
             elif e.type == pygame.KEYDOWN and e.key == pygame.K_3:
                 chat.send_message("I'm a Winner! You're loser!! HAHAHA")
             elif e.type == pygame.KEYDOWN and e.key == pygame.K_4:
