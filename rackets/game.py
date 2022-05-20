@@ -248,7 +248,7 @@ if __name__ == '__main__':
         while len(ball[5]):
             y, x = ball[5].pop(-1), ball[5].pop(-1)
             pygame.draw.circle(screen, ball[0], (p2mw(x), p2mh(y)), zoom * 20)
-            zoom *= 0.95
+            zoom *= 0.9
             index += 2
         
         mscreen.blit(screen, GAME_RECT)

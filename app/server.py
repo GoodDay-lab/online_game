@@ -175,7 +175,7 @@ class Server:
             sock = self._get_udp_socket()
             sock.sendto(json.dumps(data).encode(), tuple(addr))
         except Exception as e:
-            print('here', len(json.dumps(data).encode()))
+            print(e)
     
     def set_an_background_task(self, event, *args, **kwargs):
         asyncio.ensure_future(event(*args, **kwargs))
