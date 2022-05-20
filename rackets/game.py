@@ -218,9 +218,6 @@ if __name__ == '__main__':
         get_rect = lambda pos, size, p: pygame.Rect(p2mw(int((5 if not p else 95) - size[0] / 2)),
                                                     p2mh(int(pos - size[1] / 2)), p2mw(size[0]), p2mh(size[1]))
         
-        if not 'data' in data:
-            continue
-        
         u0 = data['u0']
         u1 = data['u1']
         
