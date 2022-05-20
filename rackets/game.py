@@ -242,14 +242,14 @@ if __name__ == '__main__':
         if u1: pygame.draw.rect(screen, 'white', get_rect(u1['pos'], u1['size'], 1))
         
         ball = data['b']
-        points = ball[5][::-1]
-        zoom = 1
-        index = 0
-        while len(points):
-            y, x = points.pop(0), points.pop(0)
-            pygame.draw.circle(screen, 'yellow', (p2mw(x), p2mh(y)), zoom * 20)
-            zoom *= 0.9
-            index += 2
+        # points = ball[5][::-1]
+        # zoom = 1
+        # index = 0
+        # while len(points):
+        #     y, x = points.pop(0), points.pop(0)
+        #     pygame.draw.circle(screen, 'yellow', (p2mw(x), p2mh(y)), zoom * 20)
+        #     zoom *= 0.9
+        #     index += 2
         pygame.draw.circle(screen, ball[0], (p2mw(ball[1]), p2mh(ball[2])), 16)
         
         mscreen.blit(screen, GAME_RECT)

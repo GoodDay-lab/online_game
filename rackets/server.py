@@ -182,19 +182,14 @@ async def create_session(addr, request):
                 if collide_point(get_rect(user['pos'], user['size'], i), ball[1:3]):
                     session['ball'][3] = math.pi - session['ball'][3]
                     session['ball'][4] *= 1.1
+                    for user in users_info:
+                        user['speed'] *= 1.1 
                 i += 1
                 
             angle = ball[3]
             ball_speed = ball[4]
             ball[1] += math.cos(angle) * ball_speed
             ball[2] += math.sin(angle) * ball_speed
-            
-            ball[5].append(ball[1])
-            ball[5].append(ball[2])
-            
-            if len(ball[5]) > 20:
-                ball[5].pop(0)
-                ball[5].pop(0)
 
             if not (0 < ball[2] < 100):
                 session['ball'][3] = -session['ball'][3]
@@ -204,7 +199,7 @@ async def create_session(addr, request):
                 score[ball[1] < 0] += 1
                 storage.update_unit("sessions", control_data={'id': sid},
                                     relevant_data={
-                                        'ball': ['red', 50, 50, math.pi * 7 / 6, 0, []],
+                                        'ball': ['red', 50, 50, math.pi * 7 / 6, 0],
                                         'are_ready': [],
                                         'is_started': False,
                                         'score': score
@@ -216,7 +211,7 @@ async def create_session(addr, request):
     simulation = Simulation(loop)
     unit = storage.add_unit("sessions", {"id": sid,
                                          "users": [uid],
-                                         "ball": ['red', 50, 50, 4, 0, []],
+                                         "ball": ['red', 50, 50, 4, 0],
                                          "is_started": False,
                                          "is_finished": False,
                                          "are_ready": [],
