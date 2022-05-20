@@ -1,4 +1,3 @@
-from socket import SO_VM_SOCKETS_BUFFER_SIZE
 import sys
 
 from time import sleep
