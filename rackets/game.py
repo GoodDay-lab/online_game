@@ -1,3 +1,4 @@
+import math
 import sys
 
 from time import sleep
@@ -242,6 +243,13 @@ if __name__ == '__main__':
         
         ball = data['b']
         pygame.draw.circle(screen, ball[0], (p2mw(ball[1]), p2mh(ball[2])), 20)
+        zoom = 1
+        index = 0
+        while len(ball[5]):
+            y, x = ball[5].pop(-1), ball[5].pop(-1)
+            pygame.draw.circle(screen, ball[0], (p2mw(x), p2mh(y)), zoom * 20)
+            zoom *= 0.95
+            index += 2
         
         mscreen.blit(screen, GAME_RECT)
         if chat_update:

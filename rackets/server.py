@@ -170,6 +170,7 @@ async def create_session(addr, request):
                 user['keys'][key] = max(user['keys'][key] - 1, 0)
         if session.get('is_started') or len(session['are_ready']) == 2:
             session['is_started'] = True
+            session['ball'][4] = session['ball'][4] or 1.4
             get_rect = lambda pos, size, p: [int((5 if not p else 95)),
                                              int(pos), size[0] / 2, size[1] / 2]
             
@@ -180,12 +181,21 @@ async def create_session(addr, request):
             for user in users_info:
                 if collide_point(get_rect(user['pos'], user['size'], i), ball[1:3]):
                     session['ball'][3] = math.pi - session['ball'][3]
+                    session['ball'][4] *= 1.1
                 i += 1
                 
             angle = ball[3]
             ball_speed = ball[4]
             ball[1] += math.cos(angle) * ball_speed
             ball[2] += math.sin(angle) * ball_speed
+            
+            ball[5].append(ball[1])
+            ball[5].append(ball[2])
+            
+            if len(ball[5]) > 20:
+                ball[5].pop(0)
+                ball[5].pop(0)
+
             if not (0 < ball[2] < 100):
                 session['ball'][3] = -session['ball'][3]
                 
@@ -194,7 +204,7 @@ async def create_session(addr, request):
                 score[ball[1] < 0] += 1
                 storage.update_unit("sessions", control_data={'id': sid},
                                     relevant_data={
-                                        'ball': ['red', 50, 50, math.pi * 7 / 6, 1.4],
+                                        'ball': ['red', 50, 50, math.pi * 7 / 6, 0, []],
                                         'are_ready': [],
                                         'is_started': False,
                                         'score': score
@@ -206,7 +216,7 @@ async def create_session(addr, request):
     simulation = Simulation(loop)
     unit = storage.add_unit("sessions", {"id": sid,
                                          "users": [uid],
-                                         "ball": ['red', 50, 50, 4, 1.4],
+                                         "ball": ['red', 50, 50, 4, 0, []],
                                          "is_started": False,
                                          "is_finished": False,
                                          "are_ready": [],
