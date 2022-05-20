@@ -84,7 +84,7 @@ async def getting_data(addr, request):
     await server.send_udp(data, addr)
     
     global time1
-    # print("gone", time.time() - time1, "s")
+    print("gone", time.time() - time1, "s")
     time1 = time.time()
 
 

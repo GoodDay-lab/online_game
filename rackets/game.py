@@ -120,8 +120,11 @@ chat = Chat()
 def transfer_data_loop(client, fps=50):
     interval = 1 / fps
     while client.transfer_live:
-        client.call_udp(method="transfer_data", data={'keys': cache.actual_data}, address=SERVER_ADDRESS,
+        try:
+            client.call_udp(method="transfer_data", data={'keys': cache.actual_data}, address=SERVER_ADDRESS,
                         events=cache.get_events(), response=True, caching=True, callback=chat.callback)
+        except:
+            continue
         sleep(interval)
     
 

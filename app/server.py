@@ -73,12 +73,15 @@ class Server:
         
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-        sock.setblocking(1)
+        sock.setblocking(0)
         sock.bind((host, port))
         print("[!] Start UDP")
         
         while is_running:
-            raw, addr = sock.recvfrom(self.buffer_size)
+            try:
+                raw, addr = sock.recvfrom(self.buffer_size)
+            except:
+                continue
             addr = list(addr)
             
             self.logger.info(f"Someone connected to UDP {addr[0]}:{addr[1]}")
