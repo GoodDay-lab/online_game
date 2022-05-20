@@ -130,8 +130,10 @@ def print_sims(client):
 
 
 def enter_first_s(client):
-    s = print_sims(client)['s'][0]
-    enter_by_sid(client, s)
+    s = print_sims(client)
+    if 's' in s:
+        s = s['s'][0]
+        enter_by_sid(client, s)
 
 
 def enter_by_sid(client, sid):
@@ -194,6 +196,8 @@ if __name__ == '__main__':
                 chat.send_message("I'm a Winner! You're loser!! HAHAHA")
             elif e.type == pygame.KEYDOWN and e.key == pygame.K_4:
                 chat.send_message("Bibi! Bye! Bye!")
+            elif e.type == pygame.KEYDOWN and e.key == pygame.K_c:
+                chat.clear()
         
         screen.fill('black')
         data = cache.get_last_data()
