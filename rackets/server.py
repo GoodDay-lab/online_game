@@ -84,7 +84,7 @@ async def getting_data(addr, request):
     await server.send_udp(data, addr)
     
     global time1
-    print("gone", time.time() - time1, "s")
+    # print("gone", time.time() - time1, "s")
     time1 = time.time()
 
 
@@ -204,6 +204,8 @@ async def create_session(addr, request):
                                         'is_started': False,
                                         'score': score
                                     })
+                for user in users_info:
+                    user['speed'] = 0.5
 
             
                     
