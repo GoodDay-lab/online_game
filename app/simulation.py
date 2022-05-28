@@ -17,7 +17,10 @@ class Simulation:
         
         def loop_wrapper(self, interval, loop, *argv):
             while self.thread_live:
-                loop(self, *argv)
+                try:
+                    loop(self, *argv)
+                except:
+                    pass
                 sleep(interval)
         
         fps = 30

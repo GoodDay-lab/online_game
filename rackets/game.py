@@ -18,6 +18,8 @@ args = parser.parse_args()
 
 pygame.init()
 
+message_sound = pygame.mixer.Sound('sounds/klak.wav')
+message_sound.set_volume(0.02)
 SERVER_ADDRESS = (args.host, args.port)
 cache = Cache()
 client = Client(cache)
@@ -40,7 +42,7 @@ class Chat():
         if len(msg) == 0:
             return 0
         client.call_udp(method="send_msg", data={'msg': msg}, address=SERVER_ADDRESS)
-        self.messages.append({"author": cache.cookie.get("uid"), "text": msg})
+        self.messages.append({"author": None, "text": msg})
         global chat_update
         chat_update = True
         return 1
@@ -52,6 +54,7 @@ class Chat():
             return
         response = client.call_udp(method="get_msg", address=SERVER_ADDRESS, response=True)
         if response['status']:
+            message_sound.play()
             self.messages.append(response)
             global chat_update
             chat_update = True
@@ -64,10 +67,11 @@ class Chat():
         message = self.get_message()
         if message is None: return
         message_arr = self.delimite_message(message['text'])
-        author = message['author']
+        author = message['author'] if message['author'] else "You"
+        ends_with = "" if not message['author'] else ".."
         
         color = None
-        if author == cache.cookie['uid']:
+        if not message['author']:
             color = self.YOU_COLOR
         else:
             color = self.ENEMY_COLOR            
@@ -78,7 +82,7 @@ class Chat():
             text_sur = self.MESSAGE_FONT.render(' '.join(line), 1, 'black')
             surface.blit(text_sur, (15, 15 + i * 24))
             pygame.draw.rect(surface, 'gray', surface.get_rect(), width=3)
-        author_sur = self.AUTHOR_FONT.render("Author: " + author[:15] + '..', 1, '#404040')
+        author_sur = self.AUTHOR_FONT.render("Author: " + author[:15] + ends_with, 1, '#404040')
         surface.blit(author_sur, (25, surface.get_rect().height - 25))
         self.slide(surface.get_rect().height + 10)
         sprite = pygame.sprite.Sprite()
@@ -160,10 +164,10 @@ if __name__ == '__main__':
     
     WIDTH = mscreen.get_width() - 300
     HEIGHT = mscreen.get_height()
-    CHAR_WIDTH = mscreen.get_width() - WIDTH
-    CHAR_HEIGHT = HEIGHT
+    CHAT_WIDTH = mscreen.get_width() - WIDTH
+    CHAT_HEIGHT = HEIGHT
     GAME_RECT = pygame.Rect(0, 0, WIDTH, HEIGHT)
-    CHAT_RECT = pygame.Rect(WIDTH, 0, CHAR_WIDTH, CHAR_HEIGHT)
+    CHAT_RECT = pygame.Rect(WIDTH, 0, CHAT_WIDTH, CHAT_HEIGHT)
     
     screen = pygame.Surface(GAME_RECT.size)
     chat_screen = pygame.Surface(CHAT_RECT.size)
