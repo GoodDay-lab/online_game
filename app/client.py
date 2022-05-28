@@ -81,9 +81,9 @@ class Client():
             events = {}
         if type(data) != dict:
             raise EncoderException("Wrong data type!")
-        request = {'type': method, 'data': data, 'cookie': self.cache.cookie, 'events': events}
+        request = {'data': data, 'cookie': self.cache.cookie, 'events': events}
         request = json.dumps(request).encode()
-        self.send_udp(request, address)
+        self.send_udp(method.encode() + b"\x00" + request, address)
         if response:
             response, addr = self.udp_socket.recvfrom(self.buffer_size)
             response = json.loads(response)

@@ -11,8 +11,7 @@ import uuid
 import random
 
 
-logger = logging.getLogger()
-server = Server(logger=logger)
+server = Server(__name__, ('0.0.0.0', 9000))
 storage = Storage()
 storage.add_table("users", {"id": str,
                             "addr": list,
@@ -34,6 +33,7 @@ storage.add_table("sessions", {"id": str,
 @server.add_udp_handler("connect")
 async def connecting(addr, request):
     uid = str(uuid.uuid4())
+    print(addr)
     storage.add_unit("users", {"id": uid,
                                "addr": addr,
                                "pos": 50,
@@ -226,4 +226,6 @@ async def create_session(addr, request):
     await server.send_udp(response, addr)
 
 
-server.run_polling(host="0.0.0.0", port=9000)
+app = App(logging.getLogger())
+app.register(server)
+app.run_polling()

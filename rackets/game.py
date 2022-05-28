@@ -121,7 +121,7 @@ class Chat():
 chat = Chat()
     
 
-def transfer_data_loop(client, fps=50):
+def transfer_data_loop(client, fps=80):
     interval = 1 / fps
     while client.transfer_live:
         try:

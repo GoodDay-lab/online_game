@@ -1,4 +1,4 @@
-
+import select
 import asyncio
 import logging
 import threading
@@ -9,16 +9,19 @@ import uuid
 
 
 class Server:
-    def __init__(self, logger=None, config=None):
+    def __init__(self, namespace, address, config=None):
         if not config:
             config = {}
-            
-        self.logger = logger
-        if not logger:
-            self.logger = logging.getLogger()
-        self.logger.setLevel(logging.INFO)
-        # self.logger.addHandler(logging.StreamHandler())
         
+        self.name = namespace
+        self._addr = address
+        self.socket = self.create_socket()
+            
+        self.logger = logging.Logger(self.name, 0)
+        handler = logging.FileHandler(f"server_{self.name}.log")
+        # self.logger.addHandler(handler)
+        
+        # Defines some constants
         self.max_players = (config.get('max_players') if 'max_players' in config else 100)
         self.blocking = (config.get('blocking') if 'blocking' in config else 0)
         self.buffer_size = (config.get('buffer_size') if 'buffer_size' in config else 2 ** 12)
@@ -26,8 +29,16 @@ class Server:
         self.sockets = {}
         self.udp_addrs = {}
         
-        self.udp_handlers = {}
+        self.handlers = {}
         self.tcp_handlers = {}
+    
+    def create_socket(self):
+        _sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        _sock.setblocking(0)
+        _sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+        _sock.setsockopt(socket.SOL_SOCKET, socket.SO_PRIORITY, 4)
+        _sock.bind(self._addr)
+        return _sock
     
     def add_udp_handler(self, namespace, **kwargs):
         """
@@ -35,7 +46,7 @@ class Server:
         """
         def f(func):
             self.logger.info(f"Added new handler on '{namespace}'")
-            self.udp_handlers[namespace] = func
+            self.handlers[namespace] = func
             def wrapped(*args, **kwargs):
                 return func(*args, **kwargs)
             return wrapped
@@ -84,11 +95,10 @@ class Server:
                 continue
             addr = list(addr)
             
-            self.logger.info(f"Someone connected to UDP {addr[0]}:{addr[1]}")
-            
             try:
                 request = json.loads(raw)
             except json.decoder.JSONDecodeError:
+                self.logger.warn("You got an unrecognized message!")
                 self.udp_handlers['_json_decode_error'](addr, raw)
             
             if request['type'] in self.udp_handlers:
@@ -139,11 +149,9 @@ class Server:
                 handler = self.tcp_handlers['_type_error']
                 await handler(sid, request_json)
     
-    
     def _run_thread(self, loop):
         asyncio.set_event_loop(loop)
         loop.run_forever()
-                
     
     def _create_sid(self):
         return str(uuid.uuid4())
@@ -179,6 +187,62 @@ class Server:
             sock.sendto(json.dumps(data).encode(), tuple(addr))
         except Exception as e:
             print(e)
+        
+
+class App:
+    def __init__(self, logger, buffer=4096):
+        self.logger = logger
+        self.servers = {}
+        self.handlers = {}
+        self._socks = []
+        self.buffer = buffer
     
-    def set_an_background_task(self, event, *args, **kwargs):
-        asyncio.ensure_future(event(*args, **kwargs))
+    def register(self, server):
+        if type(server) != Server:
+            raise TypeError("You provided a wrong type")
+        self.logger.info(f'Added new server with name {server.name} on {server._addr}')
+        self.servers[server.name] = server
+        self._socks.append(server.socket)
+        for key in server.handlers:
+            self.handlers[key] = server.handlers[key]
+    
+    def run_polling(self):
+        loop = asyncio.new_event_loop()
+        loop.run_until_complete(self._run_polling())
+    
+    async def _run_polling(self):
+        self.logger.info("Started polling")
+        self.timer = time.time()
+        while True:
+            ready_socks = select.select(self._socks, [], [])
+            read_sockets = ready_socks[0]
+            for socket in read_sockets:
+                request, addr = socket.recvfrom(self.buffer)
+                method, data = self.serialize_request(request)
+                
+                try:
+                    data_json = json.loads(data)
+                except:
+                    self.logger.warn("You got unrecognized message")
+                    continue
+                
+                if method not in self.handlers:
+                    self.logger.warn(f"Wrong method '{method}'")
+                    continue
+                
+                await self.handlers[method](list(addr), data_json)
+    
+    def serialize_request(self, request):
+        if type(request) not in (bytes, bytearray):
+            raise TypeError("You provided a wrong type of request")
+        request_array = bytearray(request)
+        
+        method_name = ""
+        method_end = 0
+        for char in request_array:
+            method_end += 1
+            if char == 0:
+                break
+            method_name += chr(char)
+        
+        return method_name, request_array[method_end:]
